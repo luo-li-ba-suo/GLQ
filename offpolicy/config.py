@@ -153,9 +153,9 @@ def get_config():
     parser.add_argument('--hypernet_hidden_dim', type=int, default=64,
                         help="Dimension of hidden layer of hypernetwork (only applicable if hypernet_layers == 2")
     # glq parameters
-    parser.add_argument('--add_other_act_to_cent', action='store_false', default=False,
+    parser.add_argument('--add_other_act_to_cent', action='store_true', default=False,
                         help="Add others' actions to centralized obs")
-    parser.add_argument('--share_hyper_network', action='store_false', default=False,
+    parser.add_argument('--share_hyper_network', action='store_true', default=False,
                         help="Share hyper network to process w and b of global network")
     parser.add_argument('--use_same_share_obs', action='store_true', default=False,
                         help="Use same global obs")
@@ -191,6 +191,7 @@ def get_config():
                         help="After how many episodes the policy should be evaled")
     parser.add_argument('--num_eval_episodes', type=int, default=32,
                         help="How many episodes to collect for each eval")
+    parser.add_argument('--if_train', action='store_false', default=True)
 
     # save parameters
     parser.add_argument('--save_interval', type=int, default=1000,
@@ -201,7 +202,7 @@ def get_config():
                         help="After how many episodes of training the policy model should be saved")
 
     # pretained parameters
-    parser.add_argument("--model_dir", type=str, default=None)
+    parser.add_argument("--model_dir", type=str, default='../test/smac/qmix/')
 
     # new processing for evaluation
     parser.add_argument("--new_proc_eval", action='store_true', default=False)

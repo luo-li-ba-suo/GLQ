@@ -291,6 +291,8 @@ class StarCraft2Env(MultiAgentEnv):
         self.max_distance_y = 0
         self.map_x = 0
         self.map_y = 0
+        self.reward = None
+        self.renderer = None
         self.terrain_height = None
         self.pathing_grid = None
         self._run_config = None
@@ -366,6 +368,10 @@ class StarCraft2Env(MultiAgentEnv):
         """Reset the environment. Required after each full episode.
         Returns initial observations and states.
         """
+        if self.share_reward:
+            self.reward = 0
+        else:
+            self.reward = np.array([0.0] * self.n_agents)
         self._episode_steps = 0
         if self._episode_count == 0:
             # Launch StarCraft II
@@ -516,8 +522,8 @@ class StarCraft2Env(MultiAgentEnv):
             self.timeouts += 1
 
         for i in range(self.n_agents):
-            target_reward = reward['share'][0]
-            extra_reward = reward['punish'][i]+reward['bonus'][i]
+            target_reward = reward['share']
+            extra_reward = reward['punish'][i]
             if self.reward_scale:
                 target_reward /= self.max_reward / self.reward_scale_rate
                 extra_reward /= self.max_reward / self.reward_scale_rate
@@ -539,11 +545,12 @@ class StarCraft2Env(MultiAgentEnv):
                 else:
                     dones[i] = False
 
-        # 至此reward计算结束，整理为各个智能体
-        if self.share_reward:
-            reward = reward['share'] + np.mean(reward['punish']) + np.mean(reward['bonus'])
+        # Calculate Individual Rewards
+        if self.share_reward:  # True:QMIX or False:GLQ
+            reward = reward['share'] + np.mean(reward['punish'])
         else:
-            reward = reward['share'] + reward['punish'] + reward['bonus']
+            reward = reward['share'] + reward['punish']
+        self.reward += reward
         if self.debug:
             logging.debug("Reward = {}".format(reward).center(60, '-'))
 
@@ -752,22 +759,18 @@ class StarCraft2Env(MultiAgentEnv):
     def reward_battle(self):
         """Reward function when self.reward_spare==False.
         Returns accumulative hit/shield point damage dealt to the enemy
-        + reward_death_value per enemy unit killed, and, in case
-        self.reward_only_positive == False, - (damage dealt to ally units
+        + reward_death_value per enemy unit killed, and set
+        self.reward_only_positive = False, - (damage dealt to ally units
         + reward_death_value per ally unit killed) * self.reward_negative_scale
         """
-        reward_separated = {'share': np.array([0.0] * len(self.agents)), 'punish': None, 'bonus': None}
+        reward_separated = {'share': 0, 'punish': np.array([0] * len(self.agents), dtype=float)}
         if self.reward_sparse:
             return reward_separated
 
         delta_deaths = np.array([0] * len(self.agents), dtype=float)
-        # delta_ally = 0
         delta_ally = np.array([0] * len(self.agents), dtype=float)
         delta_enemy = 0
-        # delta_enemy = np.array([0] * len(self.agents))
-
         neg_scale = self.reward_negative_scale
-
         # update deaths
         for al_id, al_unit in self.agents.items():
             if not self.death_tracker_ally[al_id]:
@@ -781,14 +784,12 @@ class StarCraft2Env(MultiAgentEnv):
                     self.death_tracker_ally[al_id] = 1
                     if not self.reward_only_positive:
                         delta_deaths[al_id] -= self.reward_death_value * neg_scale
-                    delta_ally[al_id] += prev_health * neg_scale
+                    delta_ally[al_id] -= prev_health * neg_scale
                 else:
                     # still alive
-                    delta_ally[al_id] += neg_scale * (
+                    delta_ally[al_id] -= neg_scale * (
                         prev_health - al_unit.health - al_unit.shield
                     )
-        reward_separated['punish'] = delta_deaths
-        reward_separated['bonus'] = delta_ally
 
         for e_id, e_unit in self.enemies.items():
             if not self.death_tracker_enemy[e_id]:
@@ -802,11 +803,8 @@ class StarCraft2Env(MultiAgentEnv):
                     delta_enemy += prev_health
                 else:
                     delta_enemy += prev_health - e_unit.health - e_unit.shield
-        reward_separated['share'] += delta_enemy
-        if self.reward_only_positive:
-            reward_separated['share'] += abs(delta_enemy + delta_deaths)  # shield regeneration
-        else:
-            reward_separated['share'] += delta_enemy + delta_deaths - delta_ally
+        reward_separated['share'] = delta_enemy
+        reward_separated['punish'] = delta_deaths + delta_ally
         return reward_separated
 
     def get_total_actions(self):
@@ -1466,6 +1464,9 @@ class StarCraft2Env(MultiAgentEnv):
 
     def close(self):
         """Close StarCraft II."""
+        if self.renderer is not None:
+            self.renderer.close()
+            self.renderer = None
         if self._sc2_proc:
             self._sc2_proc.close()
 
@@ -1473,9 +1474,15 @@ class StarCraft2Env(MultiAgentEnv):
         """Returns the random seed used by the environment."""
         self._seed = seed
 
-    def render(self):
-        """Not implemented."""
-        pass
+    def render(self, mode="human"):
+        if self.renderer is None:
+            from offpolicy.envs.starcraft2.render import StarCraft2Renderer
+
+            self.renderer = StarCraft2Renderer(self, mode)
+        assert (
+            mode == self.renderer.mode
+        ), "mode must be consistent across render calls"
+        return self.renderer.render(mode)
 
     def _kill_all_units(self):
         """Kill all units on the map."""

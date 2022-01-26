@@ -107,7 +107,7 @@ class ShareVecEnv(ABC):
         return self.step_wait()
 
     def render(self, env_id=0):
-        self.envs[0].render(close=False)
+        self.envs[0].render()
 
     def get_images(self):
         """

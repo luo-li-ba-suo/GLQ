@@ -169,12 +169,13 @@ def main(args):
               "run_dir": run_dir,
               "buffer_length": buffer_length,
               "use_same_share_obs": all_args.use_same_share_obs,
-              "use_available_actions": all_args.use_available_actions}
+              "use_available_actions": all_args.use_available_actions,
+              "if_train": all_args.if_train}
 
     total_num_steps = 0
     runner = Runner(config=config)
     while total_num_steps < all_args.num_env_steps:
-        total_num_steps = runner.run()
+        total_num_steps = runner.run(all_args.if_train)
 
     env.close()
     if all_args.use_eval and (eval_env is not env):

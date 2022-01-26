@@ -234,14 +234,13 @@ class RecRunner(object):
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
 
-        if self.model_dir is not None:
+        if self.model_dir is not None and not config['if_train']:
             self.restorer()
 
     def start_mp_evaluation(self, new_proc_eval_render):
         p = self.mp.Process(target=self.new_processing_eval, args=(new_proc_eval_render,))
         p.start()
         # p.join()
-
 
     def new_processing_eval(self, render=False):
         self.env = make_train_env(self.args)
@@ -300,7 +299,7 @@ class RecRunner(object):
                 self.last_eval_T = self.total_env_steps
 
         else:
-            self.eval(render=True)
+            self.eval(True)
 
         return self.total_env_steps
     

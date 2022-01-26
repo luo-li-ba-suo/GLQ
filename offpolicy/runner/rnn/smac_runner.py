@@ -10,7 +10,8 @@ class SMACRunner(RecRunner):
         # fill replay buffer with random actions
         num_warmup_episodes = max((self.batch_size, self.args.num_random_episodes))
         self.start = time.time()
-        self.warmup(num_warmup_episodes)
+        if config['if_train']:
+            self.warmup(num_warmup_episodes)
         end = time.time()
         print("\n Env {} Map {} Algo {} Exp {} runs total num timesteps {}/{}, FPS {}. \n"
               .format(self.env_name,
@@ -22,7 +23,7 @@ class SMACRunner(RecRunner):
                       int(self.total_env_steps / (end - self.start))))
         self.log_clear()
     
-    def eval(self):
+    def eval(self, render=False):
         """Collect episodes to evaluate the policy."""
         self.trainer.prep_rollout()
 
@@ -33,7 +34,7 @@ class SMACRunner(RecRunner):
         eval_infos['individual_extra_episode_rewards'] = []
 
         for _ in range(self.args.num_eval_episodes):
-            env_info = self.collecter(explore=False, training_episode=False, warmup=False)
+            env_info = self.collecter(explore=False, training_episode=False, warmup=False, render=render)
             
             for k, v in env_info.items():
                 eval_infos[k].append(v)
@@ -105,6 +106,9 @@ class SMACRunner(RecRunner):
 
             # env step and store the relevant episode information
             next_obs, next_share_obs, rewards, dones, infos, next_avail_acts = env.step(env_acts)
+            if render:
+                env.render()
+                time.sleep(0.8)
             if training_episode or warmup:
                 self.total_env_steps += self.num_envs
 
