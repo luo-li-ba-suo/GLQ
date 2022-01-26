@@ -24,7 +24,9 @@ def make_train_env(all_args):
                 raise NotImplementedError
             env.seed(all_args.seed + rank * 1000)
             return env
+
         return init_env
+
     if all_args.n_rollout_threads == 1:
         return ShareDummyVecEnv([get_env_fn(0)])
     else:
@@ -42,7 +44,9 @@ def make_eval_env(all_args):
                 raise NotImplementedError
             env.seed(all_args.seed * 50000 + rank * 10000)
             return env
+
         return init_env
+
     if all_args.n_eval_rollout_threads == 1:
         return ShareDummyVecEnv([get_env_fn(0)])
     else:
@@ -79,19 +83,19 @@ def main(args):
 
     # setup file to output tensorboard, hyperparameters, and saved models
     run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
-                   0] + "/results") / all_args.env_name / all_args.map_name / all_args.algorithm_name / all_args.experiment_name
+                       0] + "/results") / all_args.env_name / all_args.map_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
     if all_args.use_wandb:
         # init wandb
         run = wandb.init(config=all_args,
-                         project=all_args.env_name,
+                         project=all_args.env_name + 'Alpha',
                          entity=all_args.user_name,
                          notes=socket.gethostname(),
                          name=str(all_args.algorithm_name) + "_" +
-                         str(all_args.experiment_name) +
-                         "_seed" + str(all_args.seed),
+                              str(all_args.experiment_name) +
+                              "_seed" + str(all_args.seed),
                          group=all_args.map_name,
                          dir=str(run_dir),
                          job_type="training",
@@ -101,7 +105,7 @@ def main(args):
             curr_run = 'run1'
         else:
             exst_run_nums = [int(str(folder.name).split('run')[
-                                 1]) for folder in run_dir.iterdir() if str(folder.name).startswith('run')]
+                                     1]) for folder in run_dir.iterdir() if str(folder.name).startswith('run')]
             if len(exst_run_nums) == 0:
                 curr_run = 'run1'
             else:
@@ -134,7 +138,8 @@ def main(args):
                          "act_space": env.action_space[0]}
         }
 
-        def policy_mapping_fn(id): return 'policy_0'
+        def policy_mapping_fn(id):
+            return 'policy_0'
     else:
         policy_info = {
             'policy_' + str(agent_id): {"cent_obs_dim": get_dim_from_space(env.share_observation_space[agent_id]),
@@ -145,7 +150,8 @@ def main(args):
             for agent_id in range(num_agents)
         }
 
-        def policy_mapping_fn(agent_id): return 'policy_' + str(agent_id)
+        def policy_mapping_fn(agent_id):
+            return 'policy_' + str(agent_id)
 
     # choose algo
     if all_args.algorithm_name in ["rmatd3", "rmaddpg", "rmasac", "qmix", "vdn", "glq", "glq_addQmix",
