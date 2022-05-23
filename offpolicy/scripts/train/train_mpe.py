@@ -12,7 +12,6 @@ from offpolicy.envs.mpe.MPE_Env import MPEEnv
 from offpolicy.envs.env_wrappers import DummyVecEnv, SubprocVecEnv
 
 
-
 def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
@@ -148,7 +147,6 @@ def main(args):
             for agent_id in range(num_agents)
         }
 
-
     # choose algo
     if all_args.algorithm_name in ["rmatd3", "rmaddpg", "rmasac", "qmix", "vdn", "glq", "glq_addQmix",
                                    "glq_mixGQ", "glq_mixLQ", "glq_Qbias", "glq_mixLayer"]:
@@ -172,7 +170,9 @@ def main(args):
               "device": device,
               "use_same_share_obs": all_args.use_same_share_obs,
               "run_dir": run_dir,
-              "new_proc_eval": all_args.new_proc_eval
+              "new_proc_eval": all_args.new_proc_eval,
+              "if_train": all_args.if_train,
+              "render_interval": all_args.render_interval
               }
 
     total_num_steps = 0

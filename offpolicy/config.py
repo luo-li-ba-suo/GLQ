@@ -192,6 +192,8 @@ def get_config():
     parser.add_argument('--num_eval_episodes', type=int, default=32,
                         help="How many episodes to collect for each eval")
     parser.add_argument('--if_train', action='store_false', default=True)
+    parser.add_argument('--render_interval', type=float, default=0.5,
+                        help="How often to render (unit:second)")
 
     # save parameters
     parser.add_argument('--save_interval', type=int, default=1000,

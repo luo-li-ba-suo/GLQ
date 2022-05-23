@@ -15,7 +15,7 @@ class MPERunner(RecRunner):
         if self.new_proc_eval:
             self.start_eval.value = True
         # fill replay buffer with random actions
-        if not self.test:
+        if self.if_train:
             num_warmup_episodes = max((self.batch_size, self.args.num_random_episodes))
             self.warmup(num_warmup_episodes)
         self.start = time.time()
@@ -24,7 +24,7 @@ class MPERunner(RecRunner):
     def stop_mp_eval(self):
         self.stop_eval.value = True
 
-    def eval(self, render=False):
+    def eval(self):
         """Collect episodes to evaluate the policy."""
         self.trainer.prep_rollout()
         eval_infos = {}
@@ -33,15 +33,15 @@ class MPERunner(RecRunner):
         eval_infos['individual_extra_episode_rewards'] = []
 
         for _ in range(self.args.num_eval_episodes):
-            env_info = self.collecter(explore=False, training_episode=False, warmup=False, render=render)
+            env_info = self.collecter(explore=False, training_episode=False, warmup=False)
             for k, v in env_info.items():
                 eval_infos[k].append(v)
 
         self.log_env(eval_infos, suffix="eval_")
 
-    # for mpe-simple_spread and mpe-simple_reference  
+    # for MPE-simple_spread and MPE-simple_reference
     @torch.no_grad()
-    def shared_collect_rollout(self, explore=True, training_episode=True, warmup=False, render=False):
+    def shared_collect_rollout(self, explore=True, training_episode=True, warmup=False):
         """
         Collect a rollout and store it in the buffer. All agents share a single policy.
         :param explore: (bool) whether to use an exploration strategy when collecting the episoide.
@@ -122,8 +122,9 @@ class MPERunner(RecRunner):
             env_acts = np.split(acts_batch, self.num_envs)
             # env step and store the relevant episode information
             next_obs, rewards, dones, infos = env.step(env_acts)
-            if render:
+            if not self.if_train:
                 env.render()
+                time.sleep(self.render_interval)
             if training_episode:
                 self.total_env_steps += self.num_envs
 
@@ -169,7 +170,7 @@ class MPERunner(RecRunner):
 
         return env_info
 
-    # for mpe-simple_speaker_listener
+    # for MPE-simple_speaker_listener
     @torch.no_grad()
     def separated_collect_rollout(self, explore=True, training_episode=True, warmup=False):
         """

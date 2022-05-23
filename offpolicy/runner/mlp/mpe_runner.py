@@ -32,7 +32,7 @@ class MPERunner(MlpRunner):
 
         self.log_env(eval_infos, suffix="eval_")
 
-    # for mpe-simple_spread and mpe-simple_reference
+    # for MPE-simple_spread and MPE-simple_reference
     def shared_collect_rollout(self, explore=True, training_episode=True, warmup=False):
         """
         Collect a rollout and store it in the buffer. All agents share a single policy. Do training steps when appropriate
@@ -152,7 +152,7 @@ class MPERunner(MlpRunner):
 
         return env_info
 
-    # for mpe-simple_speaker_listener 
+    # for MPE-simple_speaker_listener
     def separated_collect_rollout(self, explore=True, training_episode=True, warmup=False):
         """
         Collect a rollout and store it in the buffer. Each agent has its own policy.. Do training steps when appropriate.

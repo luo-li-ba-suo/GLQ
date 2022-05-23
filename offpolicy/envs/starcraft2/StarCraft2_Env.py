@@ -545,7 +545,7 @@ class StarCraft2Env(MultiAgentEnv):
                 else:
                     dones[i] = False
 
-        # Calculate Individual Rewards
+        # Calculate Shared Reward or Individual Rewards
         if self.share_reward:  # True:QMIX or False:GLQ
             reward = reward['share'] + np.mean(reward['punish'])
         else:
@@ -767,8 +767,9 @@ class StarCraft2Env(MultiAgentEnv):
         if self.reward_sparse:
             return reward_separated
 
-        delta_deaths = np.array([0] * len(self.agents), dtype=float)
+        delta_ally_deaths = np.array([0] * len(self.agents), dtype=float)
         delta_ally = np.array([0] * len(self.agents), dtype=float)
+        delta_enemy_deaths = 0
         delta_enemy = 0
         neg_scale = self.reward_negative_scale
         # update deaths
@@ -783,7 +784,7 @@ class StarCraft2Env(MultiAgentEnv):
                     # just died
                     self.death_tracker_ally[al_id] = 1
                     if not self.reward_only_positive:
-                        delta_deaths[al_id] -= self.reward_death_value * neg_scale
+                        delta_ally_deaths[al_id] -= self.reward_death_value * neg_scale
                     delta_ally[al_id] -= prev_health * neg_scale
                 else:
                     # still alive
@@ -799,12 +800,13 @@ class StarCraft2Env(MultiAgentEnv):
                 )
                 if e_unit.health == 0:
                     self.death_tracker_enemy[e_id] = 1
-                    delta_deaths += self.reward_death_value
+                    delta_enemy_deaths += self.reward_death_value
                     delta_enemy += prev_health
                 else:
                     delta_enemy += prev_health - e_unit.health - e_unit.shield
-        reward_separated['share'] = delta_enemy
-        reward_separated['punish'] = delta_deaths + delta_ally
+        reward_separated['share'] = delta_enemy + 2 * delta_enemy_deaths
+        # reward_separated['punish'] = delta_deaths + delta_ally
+        reward_separated['punish'] = delta_ally_deaths * 2
         return reward_separated
 
     def get_total_actions(self):

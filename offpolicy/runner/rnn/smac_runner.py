@@ -23,7 +23,7 @@ class SMACRunner(RecRunner):
                       int(self.total_env_steps / (end - self.start))))
         self.log_clear()
     
-    def eval(self, render=False):
+    def eval(self):
         """Collect episodes to evaluate the policy."""
         self.trainer.prep_rollout()
 
@@ -34,7 +34,7 @@ class SMACRunner(RecRunner):
         eval_infos['individual_extra_episode_rewards'] = []
 
         for _ in range(self.args.num_eval_episodes):
-            env_info = self.collecter(explore=False, training_episode=False, warmup=False, render=render)
+            env_info = self.collecter(explore=False, training_episode=False, warmup=False)
             
             for k, v in env_info.items():
                 eval_infos[k].append(v)
@@ -42,7 +42,7 @@ class SMACRunner(RecRunner):
         self.log_env(eval_infos, suffix="eval_")
     
     @torch.no_grad()
-    def collect_rollout(self, explore=True, training_episode=True, warmup=False, render=False):
+    def collect_rollout(self, explore=True, training_episode=True, warmup=False):
         """
         Collect a rollout and store it in the buffer. All agents share a single policy.
         :param explore: (bool) whether to use an exploration strategy when collecting the episoide.
@@ -106,9 +106,9 @@ class SMACRunner(RecRunner):
 
             # env step and store the relevant episode information
             next_obs, next_share_obs, rewards, dones, infos, next_avail_acts = env.step(env_acts)
-            if render:
+            if not self.if_train:
                 env.render()
-                time.sleep(0.8)
+                time.sleep(self.render_interval)
             if training_episode or warmup:
                 self.total_env_steps += self.num_envs
 

@@ -62,10 +62,15 @@ class RecRunner(object):
         else:
             self.take_turn = False
 
-        if config.__contains__("test"):
-            self.test = config["test"]
+        if config.__contains__("if_train"):
+            self.if_train = config["if_train"]
         else:
-            self.test = False
+            self.if_train = True
+
+        if config.__contains__("render_interval"):
+            self.render_interval = config["render_interval"]
+        else:
+            self.render_interval = 0
 
         if config.__contains__("use_same_share_obs"):
             self.use_same_share_obs = config["use_same_share_obs"]
@@ -220,12 +225,9 @@ class RecRunner(object):
         if self.use_asynchronous_eval:
             self.eval_env = config["eval_env"]
         self.config = config
-        # dir
-        self.model_dir = self.args.model_dir
         if self.use_wandb:
             self.save_dir = str(wandb.run.dir)
         else:
-
             self.log_dir = str(self.run_dir / 'logs')
             if not os.path.exists(self.log_dir):
                 os.makedirs(self.log_dir)
@@ -234,6 +236,8 @@ class RecRunner(object):
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
 
+        # Load Models
+        self.model_dir = self.args.model_dir
         if self.model_dir is not None and not config['if_train']:
             self.restorer()
 
@@ -269,10 +273,10 @@ class RecRunner(object):
         else:
             return 'policy_' + str(agent_id)
 
-    def run(self, if_train=True):
+    def run(self):
         """Collect a training episode and perform appropriate training, saving, logging, and evaluation steps."""
         # train
-        if if_train:
+        if self.if_train:
             # collect data
             self.trainer.prep_rollout()
             env_info = self.collecter(explore=True, training_episode=True, warmup=False, render=self.args.train_render)
@@ -299,7 +303,7 @@ class RecRunner(object):
                 self.last_eval_T = self.total_env_steps
 
         else:
-            self.eval(True)
+            self.eval()
 
         return self.total_env_steps
     
@@ -469,15 +473,16 @@ class RecRunner(object):
             print("load the pretrained model from {}".format(path))
             policy_q_state_dict = torch.load(path + '/q_network.pt')           
             self.policies[pid].q_network.load_state_dict(policy_q_state_dict)
-            
-        policy_mixer_state_dict = torch.load(str(self.model_dir) + '/mixer.pt')
-        self.trainer.mixer.load_state_dict(policy_mixer_state_dict)
+        if self.if_train:
+            policy_mixer_state_dict = torch.load(str(self.model_dir) + '/mixer.pt')
+            self.trainer.mixer.load_state_dict(policy_mixer_state_dict)
 
     def restore_glq(self):
         """Load policies policies from pretrained models specified by path in config. Used for GLQ-base and GLQ-gr."""
-        print("load the pretrained global q model from {}".format(self.model_dir))
-        global_q_state_dict = torch.load(self.model_dir + '/global_q.pt')
-        self.trainer.global_q.load_state_dict(global_q_state_dict)
+        if self.if_train:
+            print("load the pretrained global q model from {}".format(self.model_dir))
+            global_q_state_dict = torch.load(self.model_dir + '/global_q.pt')
+            self.trainer.global_q.load_state_dict(global_q_state_dict)
         for pid in self.policy_ids:
             path = str(self.model_dir) + str(pid)
             print("load the pretrained local q model from {}".format(path))
