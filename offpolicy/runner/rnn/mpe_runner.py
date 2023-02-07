@@ -41,7 +41,7 @@ class MPERunner(RecRunner):
 
     # for MPE-simple_spread and MPE-simple_reference
     @torch.no_grad()
-    def shared_collect_rollout(self, explore=True, training_episode=True, warmup=False):
+    def shared_collect_rollout(self, explore=True, training_episode=True, warmup=False, render=False):
         """
         Collect a rollout and store it in the buffer. All agents share a single policy.
         :param explore: (bool) whether to use an exploration strategy when collecting the episoide.
@@ -122,7 +122,7 @@ class MPERunner(RecRunner):
             env_acts = np.split(acts_batch, self.num_envs)
             # env step and store the relevant episode information
             next_obs, rewards, dones, infos = env.step(env_acts)
-            if not self.if_train:
+            if not self.if_train or render:
                 env.render()
                 time.sleep(self.render_interval)
             if training_episode:

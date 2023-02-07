@@ -17,6 +17,6 @@ for seed in $(seq ${seed_max}); do
     --num_landmarks ${num_landmarks} --seed ${seed} --episode_length 25 --batch_size 32 --tau 0.005 \
     --lr 7e-4 --hard_update_interval_episode 100 --num_env_steps 8000000 --use_same_share_obs \
     --share_hyper_network --use_reward_normalization --use_wandb --if_train\
-    --model_dir "${env}/${algo}/" --render_interval 0.25
+    --model_dir "${env}/${scenario}/${algo}/" --render_interval 0.25
     echo "training is done!"
 done
