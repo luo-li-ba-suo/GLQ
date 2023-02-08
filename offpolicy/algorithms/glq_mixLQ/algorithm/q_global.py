@@ -37,7 +37,7 @@ class q_global(nn.Module):
         self.hypernet_output_dim = self.hidden_layer_dim
         init_method = [nn.init.xavier_uniform_, nn.init.orthogonal_][self._use_orthogonal]
 
-        self.hypernet_num = 1 if self.share_hyper_network else self.num_q_inps
+        self.hypernet_num = 1 if self.share_hyper_network else self.num_agents
 
         def init_(m):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0))
@@ -96,7 +96,7 @@ class q_global(nn.Module):
         if self.use_same_share_obs:
             states = states.view(-1, batch_size, 1, self.cent_obs_dim).float()
         else:
-            states = states.view(-1, batch_size, self.num_q_inps, self.cent_obs_dim).float()
+            states = states.view(-1, batch_size, self.num_agents, self.cent_obs_dim).float()
         agent_q_individual = agent_q_individual.view(-1, batch_size, 1, 1, self.num_q_inps)
         agent_q_inps = torch.cat([agent_q_individual[..., [n] + list(range(0, n)) + list(range(n + 1, self.num_q_inps))]
                                             for n in range(self.num_q_inps)], dim=-3)
@@ -125,15 +125,15 @@ class q_global(nn.Module):
             b2 = torch.cat(b2, dim=-1)
         # 对global网络参数预处理
         if self.use_same_share_obs and self.share_hyper_network:
-            w1=w1.repeat(1,1,3,1)
-            w2=w2.repeat(1,1,3,1)
-            b1=b1.repeat(1,1,3,1)
-            b2=b2.repeat(1,1,3,1)
+            w1=w1.repeat(1,1,self.num_agents,1)
+            w2=w2.repeat(1,1,self.num_agents,1)
+            b1=b1.repeat(1,1,self.num_agents,1)
+            b2=b2.repeat(1,1,self.num_agents,1)
         # 参数各个维度分别代表(episode总step数，批量，智能体个数，输入维度（输入一个q），输出维度)
-        w1 = w1.view(-1, batch_size, self.num_q_inps, self.num_q_inps, self.hidden_layer_dim)
-        b1 = b1.view(-1, batch_size, self.num_q_inps, 1, self.hidden_layer_dim)
-        w2 = w2.view(-1, batch_size, self.num_q_inps, self.hidden_layer_dim, 1)
-        b2 = b2.view(-1, batch_size, self.num_q_inps, 1, 1)
+        w1 = w1.view(-1, batch_size, self.num_agents, self.num_q_inps, self.hidden_layer_dim)
+        b1 = b1.view(-1, batch_size, self.num_agents, 1, self.hidden_layer_dim)
+        w2 = w2.view(-1, batch_size, self.num_agents, self.hidden_layer_dim, 1)
+        b2 = b2.view(-1, batch_size, self.num_agents, 1, 1)
         # 对global网络前向传播
         hidden_layer = F.elu(torch.matmul(agent_q_inps, w1) + b1)
         out = torch.matmul(hidden_layer, w2) + b2
