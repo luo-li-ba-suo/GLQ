@@ -29,7 +29,7 @@ class MPERunner(RecRunner):
         self.trainer.prep_rollout()
         eval_infos = {}
         eval_infos['episode_rewards'] = []
-        eval_infos['target_episode_rewards'] = []
+        eval_infos['team_episode_rewards'] = []
         eval_infos['individual_extra_episode_rewards'] = []
 
         for _ in range(self.args.num_eval_episodes):
@@ -78,7 +78,7 @@ class MPERunner(RecRunner):
             for p_id in self.policy_ids}
         episode_rewards = {p_id: np.zeros((self.episode_length, self.num_envs, self.num_agents, 1), dtype=np.float32)
                            for p_id in self.policy_ids}
-        episode_rewards_separated = {"target_reward":np.zeros((self.episode_length, self.num_envs, self.num_agents, 1), dtype=np.float32),
+        episode_rewards_separated = {"team_reward":np.zeros((self.episode_length, self.num_envs, self.num_agents, 1), dtype=np.float32),
                                      "extra_reward":np.zeros((self.episode_length, self.num_envs, self.num_agents, 1), dtype=np.float32)}
         episode_dones = {p_id: np.ones((self.episode_length, self.num_envs, self.num_agents, 1), dtype=np.float32) for
                          p_id in self.policy_ids}
@@ -165,7 +165,7 @@ class MPERunner(RecRunner):
 
         average_episode_rewards = np.mean(np.sum(episode_rewards[p_id], axis=0))
         env_info['episode_rewards'] = average_episode_rewards
-        env_info['target_episode_rewards'] = np.mean(np.sum(episode_rewards_separated['target_reward'], axis=0))
+        env_info['team_episode_rewards'] = np.mean(np.sum(episode_rewards_separated['team_reward'], axis=0))
         env_info['individual_extra_episode_rewards'] = np.mean(np.sum(episode_rewards_separated['extra_reward'], axis=0))
 
         return env_info
@@ -316,5 +316,5 @@ class MPERunner(RecRunner):
         """See parent class."""
         self.env_infos = {}
         self.env_infos['episode_rewards'] = []
-        self.env_infos['target_episode_rewards'] = []
+        self.env_infos['team_episode_rewards'] = []
         self.env_infos['individual_extra_episode_rewards'] = []

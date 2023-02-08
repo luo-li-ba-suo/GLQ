@@ -124,11 +124,12 @@ class MultiAgentEnv(gym.Env):
         # record observation for each agent
         for i, agent in enumerate(self.agents):
             obs_n.append(self._get_obs(agent))
-            reward, reward_separated = self._get_reward(agent)
+            reward, separate_rew = self._get_reward(agent)
             reward_n.append([reward])
             done_n.append([self._get_done(agent)])
-            info = {'individual_reward': reward, 'target_reward':reward_separated["target"],
-                    'extra_reward': reward_separated["punish"]}
+            info = {'individual_reward': reward,
+                    'team_reward': separate_rew["team"],
+                    'extra_reward': separate_rew["extra"]}
             info_n.append(info)
         if self.share_reward:
             reward = np.mean(reward_n)

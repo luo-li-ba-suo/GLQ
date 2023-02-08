@@ -85,22 +85,23 @@ class Scenario(BaseScenario):
     #     return rew
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark, penalized for collisions
-        rew = 0
-        rew_separated = {}
+        rew = []
+        separate_rew = {}
         for l in world.landmarks:
             dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos)))
                      for a in world.agents]
-            rew -= min(dists)
-        rew_separated['target'] = rew
-        rew_separated['punish'] = 0
+            rew.append(-min(dists))
+        rew = np.mean(rew)
+        separate_rew['team'] = rew
+        separate_rew['extra'] = 0
         if agent.collide:
             for a in world.agents:
                 if a.name == agent.name:
                     continue
                 if self.is_collision(a, agent):
                     rew -= 1
-                    rew_separated['punish'] -= 1
-        return rew, rew_separated
+                    separate_rew['extra'] -= 1
+        return rew, separate_rew
 
     def observation(self, agent, world):
         # get positions of all entities in this agent's reference frame
