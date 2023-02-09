@@ -142,9 +142,10 @@ class MPERunner(RecRunner):
             episode_dones[p_id][t] = dones
             episode_dones_env[p_id][t] = dones_env
             for n in range(self.num_agents):
-                for k in infos[0,n]:
-                    if k != 'individual_reward':
-                        episode_rewards_separated[k][t,0,n] = infos[0,n][k]
+                for env_id in range(self.num_envs):
+                    for k in infos[env_id][n]:
+                        if k != 'individual_reward':
+                            episode_rewards_separated[k][t, env_id, n] = infos[env_id][n][k]
             t += 1
 
             obs = next_obs

@@ -106,7 +106,7 @@ class RecRunner(object):
         except BaseException as e:
             self.new_proc_eval = None
         # no parallel envs
-        self.num_envs = 1
+        self.num_envs = config['env'].num_envs
         # self.mp = _mp.get_context("spawn")
         # self.start_mp_evaluation(config['args'].new_proc_eval_render)
 
