@@ -70,9 +70,13 @@ class MPERunner(RecRunner):
         episode_obs = {
             p_id: np.zeros((self.episode_length + 1, self.num_envs, self.num_agents, policy.obs_dim), dtype=np.float32)
             for p_id in self.policy_ids}
-        episode_share_obs = {
-            p_id: np.zeros((self.episode_length + 1, self.num_envs, self.num_agents, policy.central_obs_dim),
-                           dtype=np.float32) for p_id in self.policy_ids}
+        if self.use_same_share_obs:
+            episode_share_obs = {p_id: np.zeros((self.episode_length + 1, self.num_envs, policy.central_obs_dim),
+                                 dtype=np.float32) for p_id in self.policy_ids}
+        else:
+            episode_share_obs = {
+                p_id: np.zeros((self.episode_length + 1, self.num_envs, self.num_agents, policy.central_obs_dim),
+                               dtype=np.float32) for p_id in self.policy_ids}
         episode_acts = {
             p_id: np.zeros((self.episode_length, self.num_envs, self.num_agents, policy.output_dim), dtype=np.float32)
             for p_id in self.policy_ids}

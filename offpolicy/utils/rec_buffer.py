@@ -170,10 +170,6 @@ class RecPolicyBuffer(object):
             num_left_episodes = self.current_i + num_insert_episodes - self.buffer_size
             idx_range = np.concatenate((np.arange(self.current_i, self.buffer_size), np.arange(num_left_episodes)))
 
-        if self.use_same_share_obs:
-            # remove agent dimension since all agents share centralized observation
-            share_obs = share_obs[:, :, 0]
-
         self.obs[:, idx_range] = obs.copy()
         self.share_obs[:, idx_range] = share_obs.copy()
         self.acts[:, idx_range] = acts.copy()
