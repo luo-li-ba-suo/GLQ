@@ -17,7 +17,7 @@ class MultiAgentEnv(gym.Env):
     def __init__(self, world, reset_callback=None, reward_callback=None,
                  observation_callback=None, info_callback=None,
                  done_callback=None, post_step_callback=None,
-                 shared_viewer=True, discrete_action=True, share_reward=False):
+                 shared_viewer=True, discrete_action=True):
 
         self.world = world
         self.world_length = self.world.world_length
@@ -37,8 +37,6 @@ class MultiAgentEnv(gym.Env):
         # environment parameters
         # self.discrete_action_space = True
         self.discrete_action_space = discrete_action
-        self.share_reward = share_reward
-
         # if true, action is a number 0...N, otherwise action is a one-hot N-dimensional vector
         self.discrete_action_input = False
         # if true, even the action is continuous, action will be performed discretely
@@ -131,9 +129,6 @@ class MultiAgentEnv(gym.Env):
                     'team_reward': separate_rew["team"],
                     'extra_reward': separate_rew["extra"]}
             info_n.append(info)
-        if self.share_reward:
-            reward = np.mean(reward_n)
-            reward_n = [[reward]] * self.num_agents
 
         if self.post_step_callback is not None:
             self.post_step_callback(self.world)

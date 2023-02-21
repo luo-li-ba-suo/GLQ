@@ -144,8 +144,6 @@ def get_config():
     # qmix parameters
     parser.add_argument('--use_double_q', action='store_false',
                         default=True, help="Whether to use double q learning")
-    parser.add_argument('--share_reward', action='store_true',
-                        default=False, help="Whether to use the same reward")
     parser.add_argument('--hypernet_layers', type=int, default=2,
                         help="Number of layers for hypernetworks. Must be either 1 or 2")
     parser.add_argument('--mixer_hidden_dim', type=int, default=96,

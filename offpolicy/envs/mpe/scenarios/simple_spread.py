@@ -5,7 +5,6 @@ from offpolicy.envs.mpe.scenario import BaseScenario
 
 class Scenario(BaseScenario):
     def make_world(self, args):
-        self.share_reward = args.share_reward
         world = World()
         world.world_length = args.episode_length
         # set any world properties first

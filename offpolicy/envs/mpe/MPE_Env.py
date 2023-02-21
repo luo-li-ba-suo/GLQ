@@ -39,6 +39,6 @@ def MPEEnv(args):
     world = scenario.make_world(args)
     # create multiagent environment
     env = MultiAgentEnv(world, scenario.reset_world,
-                        scenario.reward, scenario.observation, share_reward=scenario.share_reward)
+                        scenario.reward, scenario.observation)
 
     return env

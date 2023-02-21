@@ -156,7 +156,7 @@ class QMix(Trainer):
         next_step_Q_tot_seq = self.target_mixer(agent_nq_seq, cent_obs_batch[1:]).squeeze(-1)
 
         # agents share reward
-        rewards = to_torch(rew_batch[self.policy_ids[0]][0]).to(**self.tpdv)
+        rewards = to_torch(np.mean(rew_batch[self.policy_ids[0]], axis=0)).to(**self.tpdv)
         # form bad transition mask
         bad_transitions_mask = torch.cat((torch.zeros(1, batch_size, 1).to(**self.tpdv), dones_env_batch[:self.episode_length - 1, :, :]))
 
