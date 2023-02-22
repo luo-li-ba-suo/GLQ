@@ -35,6 +35,8 @@ setup(
         "torch",
         "gym==0.11",
         "seaborn",
-        "tensorboardX"
+        "tensorboardX",
+        "absl-py",
+        "pyglet==1.5.27"
     ]
 )
