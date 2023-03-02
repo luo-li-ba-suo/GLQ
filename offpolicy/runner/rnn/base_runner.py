@@ -239,6 +239,7 @@ class RecRunner(object):
 
         # Load Models
         self.model_dir = self.args.model_dir
+        self.model_name = '/'+self.args.model_name
         if self.model_dir is not None and not config['if_train']:
             self.restorer()
 
@@ -475,7 +476,7 @@ class RecRunner(object):
         for pid in self.policy_ids:
             path = str(self.model_dir) + str(pid)
             print("load the pretrained model from {}".format(path))
-            policy_q_state_dict = torch.load(path + '/q_network.pt')           
+            policy_q_state_dict = torch.load(path + self.model_name)
             self.policies[pid].q_network.load_state_dict(policy_q_state_dict)
         if self.if_train:
             policy_mixer_state_dict = torch.load(str(self.model_dir) + '/mixer.pt')
@@ -490,7 +491,7 @@ class RecRunner(object):
         for pid in self.policy_ids:
             path = str(self.model_dir) + str(pid)
             print("load the pretrained local q model from {}".format(path))
-            policy_q_state_dict = torch.load(path + '/q_network.pt')
+            policy_q_state_dict = torch.load(path + self.model_name)
             self.policies[pid].q_network.load_state_dict(policy_q_state_dict)
 
     def log(self):

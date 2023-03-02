@@ -205,6 +205,7 @@ def get_config():
 
     # pretained parameters
     parser.add_argument("--model_dir", type=str, default='../test/smac/qmix/')
+    parser.add_argument("--model_name", type=str, default='q_network.pt')
 
     # new processing for evaluation
     parser.add_argument("--new_proc_eval", action='store_true', default=False)
