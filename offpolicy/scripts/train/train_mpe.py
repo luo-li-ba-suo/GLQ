@@ -58,9 +58,14 @@ def parse_args(args, parser):
     parser.add_argument("--num_landmarks", type=int, default=3)
     parser.add_argument('--num_agents', type=int,
                         default=3, help="number of agents")
-
+    parser.add_argument('--num_good_agents', type=int,
+                        default=2, help="number of agents")
+    parser.add_argument('--num_adversaries', type=int,
+                        default=4, help="number of agents")
     all_args = parser.parse_known_args(args)[0]
 
+    if all_args.scenario_name == "joint_tag":
+        all_args.num_agents = all_args.num_adversaries
     return all_args
 
 
