@@ -127,7 +127,7 @@ class Scenario(BaseScenario):
         adversaries = self.adversaries(world)
         if shape:  # reward can optionally be shaped (decreased reward for increased distance from agents)
             for adv in adversaries:
-                rew.append(-0.1 * min([np.sqrt(np.sum(np.square(a.state.p_pos - adv.state.p_pos))) for a in agents]))
+                rew.append(-0.01 * min([np.sqrt(np.sum(np.square(a.state.p_pos - adv.state.p_pos))) for a in agents]))
         separate_rew['extra'] = np.mean(rew)
 
         rew = []
@@ -138,7 +138,7 @@ class Scenario(BaseScenario):
                     if self.is_collision(ag, adv):
                         collision_num += 1
                     if collision_num == 2:
-                        rew.append(10)
+                        rew.append(1)
                         break
         separate_rew['team'] = np.mean(rew) if rew else 0
         return separate_rew['extra'] + separate_rew['team'], separate_rew
