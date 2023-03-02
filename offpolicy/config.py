@@ -194,11 +194,13 @@ def get_config():
                         help="How often to render (unit:second)")
 
     # save parameters
-    parser.add_argument('--save_interval', type=int, default=1000,
+    parser.add_argument('--save_interval', type=int, default=20000,
                         help="After how many episodes of training the policy model should be saved")
+    parser.add_argument('--save_all', action='store_true', default=False,
+                        help="Whether all the policy models should be saved")
 
     # log parameters
-    parser.add_argument('--log_interval', type=int, default=1000,
+    parser.add_argument('--log_interval', type=int, default=20000,
                         help="After how many episodes of training the policy model should be saved")
 
     # pretained parameters

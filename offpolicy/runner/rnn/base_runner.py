@@ -47,6 +47,7 @@ class RecRunner(object):
         self.eval_interval = self.args.eval_interval
         self.save_interval = self.args.save_interval
         self.log_interval = self.args.log_interval
+        self.save_all = self.args.save_all
 
         self.total_env_steps = 0  # total environment interactions collected during training
         self.num_episodes_collected = 0  # total episodes collected during training
@@ -434,7 +435,8 @@ class RecRunner(object):
             if not os.path.exists(p_save_path):
                 os.makedirs(p_save_path)
             torch.save(policy_Q.state_dict(), p_save_path + '/q_network.pt')
-
+            if self.save_all:
+                torch.save(policy_Q.state_dict(), p_save_path + '/' + str(self.total_env_steps) + '.q_network.pt')
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
         torch.save(self.trainer.mixer.state_dict(),
@@ -448,6 +450,8 @@ class RecRunner(object):
             if not os.path.exists(p_save_path):
                 os.makedirs(p_save_path)
             torch.save(policy_Q.state_dict(), p_save_path + '/q_network.pt')
+            if self.save_all:
+                torch.save(policy_Q.state_dict(), p_save_path + '/' + str(self.total_env_steps) + '.q_network.pt')
         global_q = self.trainer.global_q
         gq_save_path = self.save_dir
         if not os.path.exists(gq_save_path):
