@@ -157,6 +157,11 @@ def get_config():
                         help="Share hyper network to process w and b of global network")
     parser.add_argument('--use_same_share_obs', action='store_true', default=False,
                         help="Use same global obs")
+    # glq ablation parameters
+    parser.add_argument('--ablation_resort_q', action='store_true', default=False,
+                        help="Do not resort local q")
+    parser.add_argument('--ablation_share_reward', action='store_true', default=False,
+                        help="Share individual reward")
 
     # exploration parameters
     parser.add_argument('--num_random_episodes', type=int, default=5,

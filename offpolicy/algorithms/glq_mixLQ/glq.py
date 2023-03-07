@@ -48,6 +48,8 @@ class GLQ(Trainer):
 
         self.use_same_share_obs = self.args.use_same_share_obs
 
+        self.ablation_share_reward = self.args.ablation_share_reward
+
         multidiscrete_list = None
         if any([isinstance(policy.act_dim, np.ndarray) for policy in self.policies.values()]):
             # multidiscrete
@@ -159,6 +161,9 @@ class GLQ(Trainer):
                 Q_global_seq = self.global_q(agent_q_seq, stacked_cent_obs_batch[:-1]).unsqueeze(-1)
                 next_step_Q_global_seq = self.target_global_q(agent_nq_seq, stacked_cent_obs_batch[1:]).unsqueeze(-1)
             rewards = torch.cat([to_torch(rew_batch[p_id][n])for n in range(num_q_inps)],dim=-1).to(**self.tpdv).unsqueeze(-1)
+            if self.ablation_share_reward:
+                rewards = torch.mean(rewards, dim=-2)
+                rewards = rewards.repeat(1, 1, 3).unsqueeze(-1)
             # form bad transition mask
             bad_transitions_mask = torch.cat((torch.zeros(1, batch_size, 1, 1).to(**self.tpdv), dones_env_batch[:self.episode_length - 1, :, :, :]))
 

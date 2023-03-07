@@ -25,6 +25,8 @@ class q_global(nn.Module):
         self.act_dim = act_dim
         self._use_orthogonal = args.use_orthogonal
 
+        self.ablation_resort_q = args.ablation_resort_q
+
         if multidiscrete_list:
             self.num_q_inps = sum(multidiscrete_list)
         else:
@@ -98,8 +100,11 @@ class q_global(nn.Module):
         else:
             states = states.view(-1, batch_size, self.num_agents, self.cent_obs_dim).float()
         agent_q_individual = agent_q_individual.view(-1, batch_size, 1, 1, self.num_q_inps)
-        agent_q_inps = torch.cat([agent_q_individual[..., [n] + list(range(0, n)) + list(range(n + 1, self.num_q_inps))]
-                                            for n in range(self.num_q_inps)], dim=-3)
+        if self.ablation_resort_q:
+            agent_q_inps = agent_q_individual.repeat(1, 1, self.num_q_inps, 1, 1)
+        else:
+            agent_q_inps = torch.cat([agent_q_individual[..., [n] + list(range(0, n)) + list(range(n + 1, self.num_q_inps))]
+                                                for n in range(self.num_q_inps)], dim=-3)
         # 对hyper网络进行前向传播得到global网络参数
         if self.share_hyper_network:
             w1 = torch.abs(self.hyper_w1(states))
