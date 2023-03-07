@@ -20,6 +20,8 @@ class MPERunner(RecRunner):
             self.warmup(num_warmup_episodes)
         self.start = time.time()
         self.log_clear()
+        self.last_team_rew = 0
+        self.last_indi_extra_rew = 0
 
     def stop_mp_eval(self):
         self.stop_eval.value = True
@@ -176,6 +178,11 @@ class MPERunner(RecRunner):
         env_info['episode_rewards'] = average_episode_rewards
         env_info['team_episode_rewards'] = np.mean(np.sum(episode_rewards_separated['team_reward'], axis=0))
         env_info['individual_extra_episode_rewards'] = np.mean(np.sum(episode_rewards_separated['extra_reward'], axis=0))
+        env_info['team_versus_individual'] = env_info['team_episode_rewards']/(env_info['individual_extra_episode_rewards'] + 1e-10)
+        env_info['dteam_versus_dindividual'] = (env_info['team_episode_rewards'] - self.last_team_rew)/ \
+                                               (env_info['individual_extra_episode_rewards'] - self.last_indi_extra_rew + 1e-10)
+        self.last_team_rew = env_info['team_episode_rewards']
+        self.last_indi_extra_rew = env_info['individual_extra_episode_rewards']
 
         return env_info
 
