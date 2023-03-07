@@ -89,11 +89,11 @@ class Scenario(BaseScenario):
         for l in world.landmarks:
             dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos)))
                      for a in world.agents]
-            if world.num_agents < world.num_landmarks:
-                rew.append(-min(np.partition(dists, -world.num_agents)[-world.num_agents:]))
-            else:
-                rew.append(-min(dists))
-        rew = np.mean(rew)
+            rew.append(-min(dists))
+        if world.num_agents < world.num_landmarks:
+            rew = np.mean(np.partition(rew, -world.num_agents)[-world.num_agents:])
+        else:
+            rew = np.mean(rew)
         separate_rew['team'] = rew
         separate_rew['extra'] = 0
         if agent.collide:
