@@ -11,6 +11,9 @@ class MPERunner(RecRunner):
     def __init__(self, config):
 
         super(MPERunner, self).__init__(config)
+        self.last_team_rew = 0
+        self.last_indi_extra_rew = 0
+
         self.collecter = self.shared_collect_rollout if self.share_policy else self.separated_collect_rollout
         if self.new_proc_eval:
             self.start_eval.value = True
@@ -20,8 +23,6 @@ class MPERunner(RecRunner):
             self.warmup(num_warmup_episodes)
         self.start = time.time()
         self.log_clear()
-        self.last_team_rew = 0
-        self.last_indi_extra_rew = 0
 
     def stop_mp_eval(self):
         self.stop_eval.value = True
@@ -334,3 +335,5 @@ class MPERunner(RecRunner):
         self.env_infos['episode_rewards'] = []
         self.env_infos['team_episode_rewards'] = []
         self.env_infos['individual_extra_episode_rewards'] = []
+        self.env_infos['team_versus_individual'] = []
+        self.env_infos['dteam_versus_dindividual'] = []
