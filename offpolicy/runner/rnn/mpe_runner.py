@@ -34,6 +34,8 @@ class MPERunner(RecRunner):
         eval_infos['episode_rewards'] = []
         eval_infos['team_episode_rewards'] = []
         eval_infos['individual_extra_episode_rewards'] = []
+        eval_infos['team_versus_individual'] = []
+        eval_infos['dteam_versus_dindividual'] = []
 
         for _ in range(self.args.num_eval_episodes):
             env_info = self.collecter(explore=False, training_episode=False, warmup=False)
