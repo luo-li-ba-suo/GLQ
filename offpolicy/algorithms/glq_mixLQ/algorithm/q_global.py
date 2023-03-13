@@ -52,12 +52,6 @@ class q_global(nn.Module):
             # hyper_w2 outputs weight matrix which is of dimension (1 x hidden_layer_dim)
             self.hyper_w2 = nn.Sequential(*[init_(nn.Linear(self.cent_obs_dim, self.hypernet_output_dim))
                                             for _ in range(self.hypernet_num)])
-            # hyper_b1 outputs bias vector of dimension (1 x hidden_layer_dim)
-            self.hyper_b1 = nn.Sequential(*[init_(nn.Linear(self.cent_obs_dim, self.hypernet_output_dim))
-                                            for _ in range(self.hypernet_num)])
-            # hyper_b2 outputs bias vector of dimension (1 x 1)
-            self.hyper_b2 = nn.Sequential(*[init_(nn.Linear(self.cent_obs_dim, 1))
-                                            for _ in range(self.hypernet_num)])
         elif args.hypernet_layers == 2:
             # 2 layer hypernets: output dimensions are same as above case
             self.hyper_w1 = nn.Sequential(*[nn.Sequential(
@@ -70,18 +64,15 @@ class q_global(nn.Module):
                 nn.ReLU(),
                 init_(nn.Linear(self.hypernet_hidden_dim, self.hypernet_output_dim)))
                 for _ in range(self.hypernet_num)])
-            # hyper_b1 outputs bias vector of dimension (1 x hidden_layer_dim)
-            self.hyper_b1 = nn.Sequential(*[nn.Sequential(
-                                            init_(nn.Linear(self.cent_obs_dim, self.hypernet_hidden_dim)),
-                                            nn.ReLU(),
-                                            init_(nn.Linear(self.hypernet_hidden_dim, self.hypernet_output_dim)))
-                                            for _ in range(self.hypernet_num)])
-            # hyper_b2 outputs bias vector of dimension (1 x 1)
-            self.hyper_b2 = nn.Sequential(*[nn.Sequential(
-                                            init_(nn.Linear(self.cent_obs_dim, self.hypernet_hidden_dim)),
-                                            nn.ReLU(),
-                                            init_(nn.Linear(self.hypernet_hidden_dim, 1)))
-                                            for _ in range(self.hypernet_num)])
+        # hyper_b1 outputs bias vector of dimension (1 x hidden_layer_dim)
+        self.hyper_b1 = nn.Sequential(*[init_(nn.Linear(self.cent_obs_dim, self.hidden_layer_dim))
+                                        for _ in range(self.hypernet_num)])
+        # hyper_b2 outputs bias vector of dimension (1 x 1)
+        self.hyper_b2 = nn.Sequential(*[nn.Sequential(
+                                        init_(nn.Linear(self.cent_obs_dim, self.hypernet_hidden_dim)),
+                                        nn.ReLU(),
+                                        init_(nn.Linear(self.hypernet_hidden_dim, 1)))
+                                        for _ in range(self.hypernet_num)])
         self.to(device)
 
     def forward(self, agent_q_individual, states):
