@@ -158,6 +158,8 @@ def get_config():
     parser.add_argument('--use_same_share_obs', action='store_true', default=False,
                         help="Use same global obs")
     # glq ablation parameters
+    parser.add_argument('--ablation_repeat_sample', action='store_true', default=False,
+                        help="Repeat samples for 3 times in QMIX like GLQ")
     parser.add_argument('--ablation_resort_q', action='store_true', default=False,
                         help="Do not resort local q")
     parser.add_argument('--ablation_share_reward', action='store_true', default=False,

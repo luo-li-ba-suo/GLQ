@@ -29,6 +29,8 @@ class QMix(Trainer):
         self.opti_eps = self.args.opti_eps
         self.weight_decay = self.args.weight_decay
 
+        self.ablation_repeat_sample = self.args.ablation_repeat_sample
+
         if episode_length is None:
             self.episode_length = self.args.episode_length
         else:
@@ -157,6 +159,12 @@ class QMix(Trainer):
 
         # agents share reward
         rewards = to_torch(np.mean(rew_batch[self.policy_ids[0]], axis=0)).to(**self.tpdv)
+
+        if self.ablation_repeat_sample:
+            Q_tot_seq = Q_tot_seq.repeat(1,1,3)
+            next_step_Q_tot_seq = next_step_Q_tot_seq.repeat(1,1,3)
+            rewards = rewards.repeat(1,1,3)
+
         # form bad transition mask
         bad_transitions_mask = torch.cat((torch.zeros(1, batch_size, 1).to(**self.tpdv), dones_env_batch[:self.episode_length - 1, :, :]))
 
