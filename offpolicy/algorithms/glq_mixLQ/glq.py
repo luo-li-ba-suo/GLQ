@@ -163,7 +163,7 @@ class GLQ(Trainer):
             rewards = torch.cat([to_torch(rew_batch[p_id][n])for n in range(num_q_inps)],dim=-1).to(**self.tpdv).unsqueeze(-1)
             if self.ablation_share_reward:
                 rewards = torch.mean(rewards, dim=-2)
-                rewards = rewards.repeat(1, 1, 3).unsqueeze(-1)
+                rewards = rewards.repeat(1, 1, num_q_inps).unsqueeze(-1)
             # form bad transition mask
             bad_transitions_mask = torch.cat((torch.zeros(1, batch_size, 1, 1).to(**self.tpdv), dones_env_batch[:self.episode_length - 1, :, :, :]))
 
