@@ -70,6 +70,8 @@ class Entity(object):
         self.initial_mass = 1.0
         # commu channel
         self.channel = None
+        # For joint tag. Adversaries cannot be rewarded when the agent is protected.
+        self.rest_protect_frame = 0
 
     @property
     def mass(self):

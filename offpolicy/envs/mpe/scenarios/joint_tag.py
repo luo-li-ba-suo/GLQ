@@ -19,6 +19,8 @@ class Scenario(BaseScenario):
         num_adversaries = args.num_adversaries#4
         num_agents = num_adversaries + num_good_agents
         num_landmarks = args.num_landmarks#2
+        self.num_joint = args.num_joint
+        self.num_protect_frame = args.num_protect_frame
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
@@ -133,13 +135,17 @@ class Scenario(BaseScenario):
         rew = []
         if agent.collide:
             for ag in agents:
-                collision_num = 0
-                for adv in adversaries:
-                    if self.is_collision(ag, adv):
-                        collision_num += 1
-                    if collision_num == 2:
-                        rew.append(1)
-                        break
+                if ag.rest_protect_frame > 0:
+                    ag.rest_protect_frame -= 1
+                else:
+                    collision_num = 0
+                    for adv in adversaries:
+                        if self.is_collision(ag, adv):
+                            collision_num += 1
+                        if collision_num == self.num_joint:
+                            rew.append(1)
+                            ag.rest_protect_frame = self.num_protect_frame
+                            break
         separate_rew['team'] = np.mean(rew) if rew else 0
         return separate_rew['extra'] + separate_rew['team'], separate_rew
 
