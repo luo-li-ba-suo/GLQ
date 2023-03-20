@@ -208,6 +208,7 @@ class RecRunner(object):
 
         # initialize trainer class for updating policies
         self.trainer = TrainAlgo(self.args, self.num_agents, self.policies, self.policy_mapping_fn,
+                                 self.state_resort_orders,
                                  device=self.device, episode_length=self.episode_length)
 
 

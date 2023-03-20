@@ -9,7 +9,8 @@ from offpolicy.utils.popart import PopArt
 import numpy as np
 
 class QMix(Trainer):
-    def __init__(self, args, num_agents, policies, policy_mapping_fn, device=torch.device("cuda:0"), episode_length=None, vdn=False):
+    def __init__(self, args, num_agents, policies, policy_mapping_fn, state_resort_orders,
+                        device=torch.device("cuda:0"), episode_length=None, vdn=False):
         """
         Trainer class for recurrent QMix/VDN. See parent class for more information.
         :param episode_length: (int) maximum length of an episode.
@@ -25,6 +26,7 @@ class QMix(Trainer):
 
         # multi-head QMix
         self.num_perspective = self.args.num_perspective
+        self.state_resort_orders = state_resort_orders
 
         self.device = device
         self.tpdv = dict(dtype=torch.float32, device=device)
@@ -61,7 +63,8 @@ class QMix(Trainer):
             self.mixer = VDNMixer(args, self.num_agents, self.policies['policy_0'].central_obs_dim, self.device, multidiscrete_list=multidiscrete_list)
         else:
             self.mixer = QMixer(
-                args, self.num_agents, self.policies['policy_0'].central_obs_dim, self.device, multidiscrete_list=multidiscrete_list)
+                args, self.num_agents, self.policies['policy_0'].central_obs_dim, self.device,
+                self.state_resort_orders, multidiscrete_list=multidiscrete_list)
 
         # target policies/networks
         self.target_policies = {p_id: copy.deepcopy(self.policies[p_id]) for p_id in self.policy_ids}

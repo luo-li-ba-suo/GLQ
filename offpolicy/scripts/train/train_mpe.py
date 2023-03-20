@@ -75,7 +75,8 @@ def parse_args(args, parser):
     if all_args.algorithm_name == "qmix":
         all_args.num_perspective = 1
     if all_args.algorithm_name == "mpqmix":
-        all_args.use_same_share_obs = False
+        if not all_args.use_same_share_obs and not all_args.share_hyper_network:
+            raise "MPQMix does not support setting multi-perspectives and not sharing hypernet at the same time"
     return all_args
 
 
