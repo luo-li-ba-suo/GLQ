@@ -9,6 +9,7 @@ def _cast(x):
 
 class RecReplayBuffer(object):
     def __init__(self, policy_info, policy_agents, buffer_size, episode_length, use_same_share_obs, use_avail_acts,
+                 num_perspective,
                  use_reward_normalization=False):
         """
         Replay buffer class for training RNN policies. Stores entire episodes rather than single transitions.
@@ -30,7 +31,8 @@ class RecReplayBuffer(object):
                                                      self.policy_info[p_id]['act_space'],
                                                      use_same_share_obs,
                                                      use_avail_acts,
-                                                     use_reward_normalization)
+                                                     use_reward_normalization,
+                                                     num_perspective)
                                for p_id in self.policy_info.keys()}
 
     def __len__(self):
@@ -84,7 +86,7 @@ class RecReplayBuffer(object):
 
 class RecPolicyBuffer(object):
     def __init__(self, buffer_size, episode_length, num_agents, obs_space, share_obs_space, act_space,
-                 use_same_share_obs, use_avail_acts, use_reward_normalization=False):
+                 use_same_share_obs, use_avail_acts, num_perspective, use_reward_normalization=False):
         """
         Buffer class containing buffer data corresponding to a single policy.
 
@@ -106,6 +108,7 @@ class RecPolicyBuffer(object):
         self.use_reward_normalization = use_reward_normalization
         self.filled_i = 0
         self.current_i = 0
+        self.num_perspective = num_perspective
 
         # obs
         if obs_space.__class__.__name__ == 'Box':
@@ -123,7 +126,7 @@ class RecPolicyBuffer(object):
         if self.use_same_share_obs:
             self.share_obs = np.zeros((self.episode_length + 1, self.buffer_size, share_obs_shape[0]), dtype=np.float32)
         else:
-            self.share_obs = np.zeros((self.episode_length + 1, self.buffer_size, self.num_agents, share_obs_shape[0]),
+            self.share_obs = np.zeros((self.episode_length + 1, self.buffer_size, self.num_perspective, share_obs_shape[0]),
                                       dtype=np.float32)
 
         # action
@@ -220,10 +223,7 @@ class RecPolicyBuffer(object):
         else:
             rewards = _cast(self.rewards[:, sample_inds])
 
-        if self.use_same_share_obs:
-            share_obs = self.share_obs[:, sample_inds]
-        else:
-            share_obs = _cast(self.share_obs[:, sample_inds])
+        share_obs = self.share_obs[:, sample_inds]
 
         dones = _cast(self.dones[:, sample_inds])
         dones_env = self.dones_env[:, sample_inds]

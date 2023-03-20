@@ -1,28 +1,30 @@
+
 import torch
 import copy
 from offpolicy.utils.util import soft_update, huber_loss, mse_loss, to_torch
-from offpolicy.algorithms.glq_mixLQ.algorithm.q_global import q_global
+from offpolicy.algorithms.mpqmix.algorithm.q_mixer import QMixer
+from offpolicy.algorithms.vdn.algorithm.vdn_mixer import VDNMixer
 from offpolicy.algorithms.base.trainer import Trainer
 from offpolicy.utils.popart import PopArt
 import numpy as np
 
-class GLQ(Trainer):
-    def __init__(self, args, num_agents, policies, policy_mapping_fn, device=torch.device("cuda:0"), episode_length=None, gr=False):
+class QMix(Trainer):
+    def __init__(self, args, num_agents, policies, policy_mapping_fn, device=torch.device("cuda:0"), episode_length=None, vdn=False):
         """
         Trainer class for recurrent QMix/VDN. See parent class for more information.
         :param episode_length: (int) maximum length of an episode.
         :param vdnl: (bool) whether the algorithm being used is VDN.
         """
         self.args = args
-
-        self.add_other_act_to_cent = args.add_other_act_to_cent
-
         self.use_popart = self.args.use_popart
         self.use_value_active_masks = self.args.use_value_active_masks
         self.use_per = self.args.use_per
         self.per_eps = self.args.per_eps
         self.use_huber_loss = self.args.use_huber_loss
         self.huber_delta = self.args.huber_delta
+
+        # multi-head QMix
+        self.num_perspective = self.args.num_perspective
 
         self.device = device
         self.tpdv = dict(dtype=torch.float32, device=device)
@@ -48,36 +50,35 @@ class GLQ(Trainer):
 
         self.use_same_share_obs = self.args.use_same_share_obs
 
-        self.ablation_share_reward = self.args.ablation_share_reward
-
         multidiscrete_list = None
         if any([isinstance(policy.act_dim, np.ndarray) for policy in self.policies.values()]):
             # multidiscrete
             multidiscrete_list = [len(self.policies[p_id].act_dim) *
                                   len(self.policy_agents[p_id]) for p_id in self.policy_ids]
 
-        # global network
-        if not gr:
-            self.global_q = q_global(args, self.num_agents, self.policies['policy_0'].central_obs_dim,
-                                     self.policies['policy_0'].act_dim, self.device)
+        # mixer network
+        if vdn:
+            self.mixer = VDNMixer(args, self.num_agents, self.policies['policy_0'].central_obs_dim, self.device, multidiscrete_list=multidiscrete_list)
+        else:
+            self.mixer = QMixer(
+                args, self.num_agents, self.policies['policy_0'].central_obs_dim, self.device, multidiscrete_list=multidiscrete_list)
 
         # target policies/networks
         self.target_policies = {p_id: copy.deepcopy(self.policies[p_id]) for p_id in self.policy_ids}
-        self.target_global_q = copy.deepcopy(self.global_q)
+        self.target_mixer = copy.deepcopy(self.mixer)
 
         # collect all trainable parameters: each policy parameters, and the mixer parameters
         self.parameters = []
         for policy in self.policies.values():
             self.parameters += policy.parameters()
-        self.parameters += self.global_q.parameters()
+        self.parameters += self.mixer.parameters()
         self.optimizer = torch.optim.Adam(
             params=self.parameters, lr=self.lr, eps=self.opti_eps)
 
         if self.args.use_double_q:
             print("double Q learning will be used")
 
-
-    def train_policy_on_batch(self, batch, update_policy_id=None, num_agents=None):
+    def train_policy_on_batch(self, batch, update_policy_id=None):
         """See parent class."""
         # unpack the batch
         obs_batch, cent_obs_batch, \
@@ -85,14 +86,17 @@ class GLQ(Trainer):
         dones_batch, dones_env_batch, \
         avail_act_batch, \
         importance_weights, idxes = batch
-        num_q_inps = num_agents
+
         cent_obs_batch = to_torch(cent_obs_batch[self.policy_ids[0]])
 
-        dones_env_batch = to_torch(dones_env_batch[self.policy_ids[0]]).to(**self.tpdv).unsqueeze(-1)
+        dones_env_batch = to_torch(dones_env_batch[self.policy_ids[0]]).to(**self.tpdv)
 
-        losses = []
-        grads_norm = []
-        Qs_global = []
+        # individual agent q value sequences: each element is of shape (ep_len, batch_size, 1)
+        agent_q_seq = []
+        # individual agent next step q value sequences
+        agent_nq_seq = []
+        batch_size = None
+
         for p_id in self.policy_ids:
             policy = self.policies[p_id]
             target_policy = self.target_policies[p_id]
@@ -113,13 +117,8 @@ class GLQ(Trainer):
             # [num_agents, episode_length, episodes, dim]
             batch_size = pol_obs_batch.shape[2]
             total_batch_size = batch_size * len(self.policy_agents[p_id])
+
             sum_act_dim = int(sum(policy.act_dim)) if policy.multidiscrete else policy.act_dim
-            # 排除掉自己的动作，得到其他智能体动作，作为全局信息输入q global
-            if self.add_other_act_to_cent:
-                curr_other_act_batch = torch.cat([torch.cat(list(curr_act_batch[list(range(0, n)) + list(range(n+1, num_agents))]), dim=-1).unsqueeze(dim=-2)
-                                                  for n in range(num_agents)], dim=-2)
-                next_other_act_batch = torch.cat((curr_other_act_batch[1:],
-                                                     torch.zeros(1, batch_size, num_agents, sum_act_dim*(num_agents-1)).to(**self.tpdv)))
 
             pol_prev_act_buffer_seq = torch.cat((torch.zeros(1, total_batch_size, sum_act_dim).to(**self.tpdv),
                                                  stacked_act_batch))
@@ -127,15 +126,14 @@ class GLQ(Trainer):
             # sequence of q values for all possible actions
             pol_all_q_seq, _ = policy.get_q_values(stacked_obs_batch, pol_prev_act_buffer_seq,
                                                                             policy.init_hidden(-1, total_batch_size))
-            # get only the q values corresponding to actions taken in action_batch.
-            # '''Ignore the last time dimension.'''
+            # get only the q values corresponding to actions taken in action_batch. Ignore the last time dimension.
             if policy.multidiscrete:
                 pol_all_q_curr_seq = [q_seq[:-1] for q_seq in pol_all_q_seq]
                 pol_q_seq = policy.q_values_from_actions(pol_all_q_curr_seq, stacked_act_batch)
             else:
                 pol_q_seq = policy.q_values_from_actions(pol_all_q_seq[:-1], stacked_act_batch)
             agent_q_out_sequence = pol_q_seq.split(split_size=batch_size, dim=-2)
-            agent_q_seq = torch.cat(agent_q_out_sequence, dim=-1)
+            agent_q_seq.append(torch.cat(agent_q_out_sequence, dim=-1))
 
             with torch.no_grad():
                 if self.args.use_double_q:
@@ -147,46 +145,60 @@ class GLQ(Trainer):
             # don't need the first Q values for next step
             target_q_seq = target_q_seq[1:]
             agent_nq_sequence = target_q_seq.split(split_size=batch_size, dim=-2)
-            agent_nq_seq = torch.cat(agent_nq_sequence, dim=-1)
+            agent_nq_seq.append(torch.cat(agent_nq_sequence, dim=-1))
 
-            # get curr step and next step Q_tot values using mixer
-            if self.add_other_act_to_cent:
-                Q_global_seq = self.global_q(agent_q_seq, cent_obs_batch[:-1], curr_other_act_batch).unsqueeze(-1)
-                next_step_Q_global_seq = self.target_global_q(agent_nq_seq, cent_obs_batch[1:], next_other_act_batch).unsqueeze(-1)
+        # combine agent q value sequences to feed into mixer networks
+        agent_q_seq = torch.cat(agent_q_seq, dim=-1)
+        agent_nq_seq = torch.cat(agent_nq_seq, dim=-1)
+
+        # get curr step and next step Q_tot values using mixer
+        Q_tot_seq = self.mixer(agent_q_seq, cent_obs_batch[:-1])
+        next_step_Q_tot_seq = self.target_mixer(agent_nq_seq, cent_obs_batch[1:])
+
+        # agents share reward
+        rewards = to_torch(np.mean(rew_batch[self.policy_ids[0]], axis=0)).to(**self.tpdv)
+
+        rewards = rewards.repeat(1, 1, self.num_perspective)
+
+        # form bad transition mask
+        bad_transitions_mask = torch.cat((torch.zeros(1, batch_size, 1).to(**self.tpdv), dones_env_batch[:self.episode_length - 1, :, :]))
+
+        # bootstrapped targets
+        Q_tot_target_seq = rewards + (1 - dones_env_batch) * self.args.gamma * next_step_Q_tot_seq
+        # Bellman error and mask out invalid transitions
+        error = (Q_tot_seq - Q_tot_target_seq.detach()) * (1 - bad_transitions_mask)
+
+        if self.use_per:
+            # Form updated priorities for prioritized experience replay using the Bellman error
+            importance_weights = to_torch(importance_weights).to(**self.tpdv)
+            if self.use_huber_loss:
+                per_batch_error = huber_loss(error, self.huber_delta).sum(dim=0).flatten()
             else:
-                Q_global_seq = self.global_q(agent_q_seq, cent_obs_batch[:-1]).unsqueeze(-1)
-                next_step_Q_global_seq = self.target_global_q(agent_nq_seq, cent_obs_batch[1:]).unsqueeze(-1)
-            rewards = torch.cat([to_torch(rew_batch[p_id][n])for n in range(num_q_inps)],dim=-1).to(**self.tpdv).unsqueeze(-1)
-            if self.ablation_share_reward:
-                rewards = torch.mean(rewards, dim=-2)
-                rewards = rewards.repeat(1, 1, num_q_inps).unsqueeze(-1)
-            # form bad transition mask
-            bad_transitions_mask = torch.cat((torch.zeros(1, batch_size, 1, 1).to(**self.tpdv), dones_env_batch[:self.episode_length - 1, :, :, :]))
+                per_batch_error = mse_loss(error).sum(dim=0).flatten()
+            importance_weight_error = per_batch_error * importance_weights
+            loss = importance_weight_error.sum() / (1 - bad_transitions_mask).sum()
 
-            # bootstrapped targets
-            Q_global_target_seq = rewards + (1 - dones_env_batch) * self.args.gamma * next_step_Q_global_seq
-            # Bellman error and mask out invalid transitions
-            error = (Q_global_seq - Q_global_target_seq.detach()) * (1 - bad_transitions_mask)
-
+            # new priorities are a combination of the maximum TD error across sequence and the mean TD error across sequence (see R2D2 paper)
+            td_errors = error.abs().cpu().detach().numpy()
+            new_priorities = ((1 - self.args.per_nu) * td_errors.mean(axis=0) +
+                              self.args.per_nu * td_errors.max(axis=0)).flatten() + self.per_eps
+        else:
             if self.use_huber_loss:
                 loss = huber_loss(error, self.huber_delta).sum() / (1 - bad_transitions_mask).sum()
             else:
                 loss = mse_loss(error).sum() / (1 - bad_transitions_mask).sum()
+            new_priorities = None
 
-            # backward pass and gradient step
-            self.optimizer.zero_grad()
-            loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(self.parameters, self.args.max_grad_norm)
-            self.optimizer.step()
-            losses.append(loss)
-            grads_norm.append(grad_norm)
-            Qs_global.append((Q_global_seq * (1 - bad_transitions_mask)).mean())
-        new_priorities = None
+        # backward pass and gradient step
+        self.optimizer.zero_grad()
+        loss.backward()
+        grad_norm = torch.nn.utils.clip_grad_norm_(self.parameters, self.args.max_grad_norm)
+        self.optimizer.step()
         # log
         train_info = {}
-        train_info['loss'] = sum(losses)/len(self.policy_ids)
-        train_info['grad_norm'] = sum(grads_norm)/len(self.policy_ids)
-        train_info['Q_global'] = sum(Qs_global)/len(self.policy_ids)
+        train_info['loss'] = loss
+        train_info['grad_norm'] = grad_norm
+        train_info['Q_tot'] = (Q_tot_seq * (1 - bad_transitions_mask)).mean()
 
         return train_info, new_priorities, idxes
 
@@ -196,28 +208,28 @@ class GLQ(Trainer):
         print("hard update targets")
         for policy_id in self.policy_ids:
             self.target_policies[policy_id].load_state(self.policies[policy_id])
-        if self.global_q is not None:
-            self.target_global_q.load_state_dict(self.global_q.state_dict())
+        if self.mixer is not None:
+            self.target_mixer.load_state_dict(self.mixer.state_dict())
 
     def soft_target_updates(self):
         """Soft update the target networks."""
         for policy_id in self.policy_ids:
             soft_update(self.target_policies[policy_id], self.policies[policy_id], self.tau)
-        if self.global_q is not None:
-            soft_update(self.target_global_q, self.global_q, self.tau)
+        if self.mixer is not None:
+            soft_update(self.target_mixer, self.mixer, self.tau)
 
     def prep_training(self):
         """See parent class."""
         for p_id in self.policy_ids:
             self.policies[p_id].q_network.train()
             self.target_policies[p_id].q_network.train()
-        self.global_q.train()
-        self.target_global_q.train()
+        self.mixer.train()
+        self.target_mixer.train()
 
     def prep_rollout(self):
         """See parent class."""
         for p_id in self.policy_ids:
             self.policies[p_id].q_network.eval()
             self.target_policies[p_id].q_network.eval()
-        self.global_q.eval()
-        self.target_global_q.eval()
+        self.mixer.eval()
+        self.target_mixer.eval()

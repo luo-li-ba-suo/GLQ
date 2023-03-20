@@ -72,6 +72,10 @@ def parse_args(args, parser):
 
     if all_args.scenario_name == "joint_tag":
         all_args.num_agents = all_args.num_adversaries
+    if all_args.algorithm_name == "qmix":
+        all_args.num_perspective = 1
+    if all_args.algorithm_name == "mpqmix":
+        all_args.use_same_share_obs = False
     return all_args
 
 
@@ -160,7 +164,7 @@ def main(args):
 
     # choose algo
     if all_args.algorithm_name in ["rmatd3", "rmaddpg", "rmasac", "qmix", "vdn", "glq", "glq_addQmix",
-                                   "glq_mixGQ", "glq_mixLQ", "glq_Qbias", "glq_mixLayer"]:
+                                   "glq_mixGQ", "glq_mixLQ", "glq_Qbias", "glq_mixLayer", "mpqmix"]:
         from offpolicy.runner.rnn.mpe_runner import MPERunner as Runner
     elif all_args.algorithm_name in ["matd3", "maddpg", "masac", "mqmix", "mvdn"]:
         from offpolicy.runner.mlp.mpe_runner import MPERunner as Runner

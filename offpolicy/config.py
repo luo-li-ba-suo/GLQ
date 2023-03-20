@@ -8,7 +8,7 @@ def get_config():
     # prepare parameters
     parser.add_argument("--algorithm_name", type=str, default="rmatd3", choices=[
                         "rmatd3", "rmaddpg", "rmasac", "qmix", "vdn", "matd3", "maddpg", "masac", "mqmix", "mvdn",
-        "glq", "glq_addQmix", "glq_mixGQ", "glq_mixLQ", "glq_Qbias", "glq_mixLayer"])
+        "glq", "glq_addQmix", "glq_mixGQ", "glq_mixLQ", "glq_Qbias", "glq_mixLayer", "mpqmix"])
     parser.add_argument("--experiment_name", type=str, default="check")
     parser.add_argument("--seed", type=int, default=1,
                         help="Random seed for numpy/torch")
@@ -164,6 +164,11 @@ def get_config():
                         help="Do not resort local q")
     parser.add_argument('--ablation_share_reward', action='store_true', default=False,
                         help="Share individual reward")
+    # multi-head QMix parameters
+    parser.add_argument('--num_perspective', type=int, default=3,
+                        help="Num of Q mixer head")
+    parser.add_argument('--resort_state', action='store_true', default=False,
+                        help="Whether resort the state for mixer")
 
     # exploration parameters
     parser.add_argument('--num_random_episodes', type=int, default=5,

@@ -4,11 +4,40 @@ import wandb
 import torch
 from tensorboardX import SummaryWriter
 from torch import multiprocessing as _mp
+from itertools import permutations
 
 from offpolicy.utils.rec_buffer import RecReplayBuffer, PrioritizedRecReplayBuffer
 from offpolicy.utils.util import DecayThenFlatSchedule
 from offpolicy.runner.rnn.make_env import make_train_env, make_eval_env  # 用于多进程新建环境
 
+
+def generate_orders(num_agent: int, num_state: int):
+    result = []
+    # Generate the first num_agent arrays
+    for i in range(min(num_agent, num_state)):
+        arr = [i] + [x for x in range(num_agent) if x != i]
+        result.append(arr)
+
+    # Generate additional arrays using permutations
+    if num_state > num_agent:
+        perms = list(permutations(range(num_agent)))
+        used_perms = set(tuple(x) for x in result)
+        for perm in perms:
+            if len(result) >= num_state:
+                break
+            if perm not in used_perms:
+                result.append(perm)
+                used_perms.add(perm)
+
+    # Generate remaining arrays randomly
+    while len(result) < num_state:
+        new_perm = tuple(np.random.permutation(num_agent))
+        while new_perm in used_perms:
+            new_perm = tuple(np.random.permutation(num_agent))
+        result.append(new_perm)
+        used_perms.add(new_perm)
+
+    return result
 
 class RecRunner(object):
     """Base class for training recurrent policies."""
@@ -20,7 +49,7 @@ class RecRunner(object):
         """
         self.args = config["args"]
         self.device = config["device"]
-        self.q_learning = ["qmix","vdn"]
+        self.q_learning = ["qmix","vdn","mpqmix"]
         self.global_and_local_q = ["glq", "glq_gr"]
         self.run_dir = config["run_dir"]
 
@@ -102,6 +131,10 @@ class RecRunner(object):
         self.num_agents = config["num_agents"]
         self.agent_ids = [i for i in range(self.num_agents)]
 
+        # for multi-perspective qmix
+        self.num_perspective = self.args.num_perspective
+        self.state_resort_orders = generate_orders(self.num_agents, self.num_perspective)
+
         try:
             self.new_proc_eval = config['new_proc_eval']
         except BaseException as e:
@@ -146,6 +179,9 @@ class RecRunner(object):
         elif self.algorithm_name == "qmix":
             from offpolicy.algorithms.qmix.algorithm.QMixPolicy import QMixPolicy as Policy
             from offpolicy.algorithms.qmix.qmix import QMix as TrainAlgo
+        elif self.algorithm_name == "mpqmix":
+            from offpolicy.algorithms.mpqmix.algorithm.QMixPolicy import QMixPolicy as Policy
+            from offpolicy.algorithms.mpqmix.qmix import QMix as TrainAlgo
         elif self.algorithm_name == "vdn":
             from offpolicy.algorithms.vdn.algorithm.VDNPolicy import VDNPolicy as Policy
             from offpolicy.algorithms.vdn.vdn import VDN as TrainAlgo
@@ -207,7 +243,8 @@ class RecRunner(object):
                                           self.episode_length,
                                           self.use_same_share_obs,
                                           self.use_avail_acts,
-                                          self.use_reward_normalization)
+                                          self.use_reward_normalization,
+                                          self.num_perspective)
         # 待定义
         self.collecter = self.collect_rollout
 

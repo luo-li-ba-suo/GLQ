@@ -80,7 +80,7 @@ class MPERunner(RecRunner):
                                  dtype=np.float32) for p_id in self.policy_ids}
         else:
             episode_share_obs = {
-                p_id: np.zeros((self.episode_length + 1, self.num_envs, self.num_agents, policy.central_obs_dim),
+                p_id: np.zeros((self.episode_length + 1, self.num_envs, self.num_perspective, policy.central_obs_dim),
                                dtype=np.float32) for p_id in self.policy_ids}
         episode_acts = {
             p_id: np.zeros((self.episode_length, self.num_envs, self.num_agents, policy.output_dim), dtype=np.float32)
@@ -101,9 +101,8 @@ class MPERunner(RecRunner):
             if self.use_same_share_obs:
                 share_obs = obs.reshape(self.num_envs, -1)
             else:
-                share_obs = np.concatenate([obs[:, [n] + list(range(0, n)) + list(range(n + 1, self.num_agents)), :]
-                                            for n in range(self.num_agents)]).reshape(self.num_envs, self.num_agents,
-                                                                                      -1)
+                share_obs = np.concatenate([obs[:, order, :] for order in self.state_resort_orders]
+                                           ).reshape(self.num_envs, self.num_perspective, -1)
 
             # group observations from parallel envs into one batch to process at once
             obs_batch = np.concatenate(obs)
@@ -162,9 +161,8 @@ class MPERunner(RecRunner):
         if self.use_same_share_obs:
             episode_share_obs[p_id][t] = obs.reshape(self.num_envs, -1)
         else:
-            episode_share_obs[p_id][t] = np.concatenate([
-                obs[:, [n] + list(range(0, n)) + list(range(n + 1, self.num_agents)), :]
-                for n in range(self.num_agents)]).reshape(self.num_envs, self.num_agents, -1)
+            episode_share_obs[p_id][t] = np.concatenate([obs[:, order, :] for order in self.state_resort_orders]
+                                                        ).reshape(self.num_envs, self.num_perspective, -1)
         if explore:
             self.num_episodes_collected += self.num_envs
             # push all episodes collected in this rollout step to the buffer
