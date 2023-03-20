@@ -167,8 +167,8 @@ def get_config():
     # multi-head QMix parameters
     parser.add_argument('--num_perspective', type=int, default=3,
                         help="Num of Q mixer head")
-    parser.add_argument('--resort_state', action='store_true', default=False,
-                        help="Whether resort the state for mixer")
+    parser.add_argument('--resort_q', action='store_true', default=False,
+                        help="Whether resort the local q for mixer")
 
     # exploration parameters
     parser.add_argument('--num_random_episodes', type=int, default=5,
